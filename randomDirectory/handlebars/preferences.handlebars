@@ -1,0 +1,58 @@
+<div class="mdl-grid demo-content">
+    <div class="demo-charts demo-card-wide mdl-color--white mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-grid">
+		<div class="mdl-cell--8-col" style="margin:auto;">
+			{{#if data}}
+				{{#if data.preferences}}
+					{{#if data.preferences.availableDepartments}}
+						<div class="mdl-cell--12-col mdl-textfield mdl-js-textfield mdl-textfield--floating-label getmdl-select getmdl-select__fix-height dropdown">
+							<input type="text" value="" class="mdl-textfield__input" id="sample5" readonly>
+							<input type="hidden" value="" name="sample5">
+							<i class="mdl-icon-toggle__label material-icons">keyboard_arrow_down</i>
+							<label for="sample5" class="mdl-textfield__label">Department</label>
+							<ul for="sample5" class="mdl-menu mdl-menu--bottom-left mdl-js-menu">
+								{{#each data.preferences.availableDepartments}}
+									<li class="mdl-menu__item" data-val="{{this}}">{{this}}</li>
+								{{/each}}
+							</ul>
+						</div>
+					{{/if}}
+					<div class="mdl-cell--10-col">
+						<div class="mdl-cell--10-col mdl-textfield mdl-js-textfield mdl-textfield--floating-label calenderField">
+							<input class="mdl-textfield__input" type="text" name="daterange"/>
+							<label class="mdl-textfield__label" for="sample4">Date range</label>
+						</div>
+					</div>
+					<div class="mdl-cell--12-col">
+						<div class="mdl-cell--10-col mdl-textfield mdl-js-textfield mdl-textfield--floating-label emailField">
+							<input class="mdl-textfield__input" type="email" pattern="^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$" id="sample4">
+							<label class="mdl-textfield__label" for="sample4">Email</label>
+							<span class="mdl-textfield__error">Invalid Email address</span>
+						</div>
+						<div class="mdl-cell--2-col emailAdd hidden" style="display:inline-block;">
+							<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent emailAddBtn">
+								Add
+							</button>
+						</div>
+					</div>
+
+					<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent saveBtn">
+						Save
+					</button>
+				{{/if}}
+			{{/if}}
+		</div>
+		<div class="mdl-cell--4-col" style="margin:auto;">
+			<div class="mdl-cell--12-col chipHolder">
+				{{#if data.preferences.users}}
+					{{#each data.preferences.users}}
+						<span class="mdl-chip mdl-chip--contact mdl-chip--deletable">
+							<span class="mdl-chip__contact mdl-color--teal mdl-color-text--white">{{{substring this 0 1}}}</span>
+							<span class="mdl-chip__text">{{this}}</span>
+							<a href="#" class="mdl-chip__action"><i class="material-icons">cancel</i></a>
+						</span>
+					{{/each}}
+				{{/if}}
+			</div>
+		</div>
+    </div>
+</div>

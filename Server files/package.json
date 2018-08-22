@@ -1,0 +1,35 @@
+{
+  "name": "timesheets",
+  "dependencies": {
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2",
+    "googleapis": "*",
+    "jquery": "^3.3.1",
+    "jsdom": "^11.6.2",
+    "moment": "^2.21.0",
+    "mongodb": "^3.0.2",
+    "path": "^0.12.7",
+    "randomstring": "^1.1.5"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "description": "Node.js based web app for Timesheets",
+  "version": "2.0.0",
+  "main": "server.js",
+  "keywords": [
+    "Timesheets",
+    "manager"
+  ],
+  "author": "Hariharan K",
+  "license": "SEE LICENSE IN README.md",
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hariharank6/Timesheets.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hariharank6/Timesheets/issues"
+  },
+  "homepage": "https://github.com/hariharank6/Timesheets"
+}

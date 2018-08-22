@@ -1,0 +1,26 @@
+<div class="mdl-grid demo-content" style="z-index : 99999999">
+    <div class="demo-charts demo-card-wide mdl-color--white mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-grid">
+        <div class="mdl-card__title">
+            <h2 class="mdl-card__title-text">Welcome</h2>
+        </div>
+        <div class="mdl-card__supporting-text">
+            A small web app based on Nodejs and Mongodb to automate the TimeSheet processes.
+            <div> As of now, it can track who haven't filled the sheet making compliance much easier.</div>
+            <div>By authorizing this app, <b>your passwords are never shared.</b> Rather than that, authorisation tokens were provided by google to access your data.</div>
+            <div>You can revoke access anytime using, <a>myaccount.google.com/permissions?pli=1</a></div>
+        </div>
+        <div class="mdl-card__actions mdl-card--border">
+			{{#if data}}
+				{{#if data.links}}
+					{{#each data.links}}
+						<a class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect" href="{{this.url}}">
+							{{#if this.name}}
+								{{this.name}}
+							{{/if}}
+						</a> 
+					{{/each}} 
+				{{/if}}
+			{{/if}}
+        </div>
+    </div>
+</div>

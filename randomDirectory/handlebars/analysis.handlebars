@@ -1,0 +1,29 @@
+<div class="container">
+    {{#if data}}
+        {{#if data.results}}
+            {{#each data.results}}
+                <div class="mdl-grid demo-content">
+                    <div class="demo-charts demo-card-wide mdl-color--white mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-grid">
+                        <div class="mdl-card__actions">
+                            <h2 class="mdl-card__title-text">{{@key}}</h2>                          
+                            {{#if this}}
+                                <ul class="demo-list-icon mdl-list">
+                                    {{#each this}}
+                                        <li class="mdl-list__item">
+                                            <span class="mdl-list__item-primary-content">
+                                                <i class="material-icons mdl-list__item-icon">person</i>
+                                                {{this}}
+                                            </span>
+                                        </li>   
+                                    {{/each}}                         
+                                </ul>
+                            {{else}}
+                                <div class="mdl-card__supporting-text">Everyone filled Time Sheet on {{@key}}</div>
+                            {{/if}}                                
+                        </div>
+                    </div>
+                </div>
+            {{/each}} 
+        {{/if}}
+    {{/if}}
+</div>
