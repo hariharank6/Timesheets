@@ -53,7 +53,8 @@ var thisObj = {
         clientID: "",
         clientSecret: "",
         redirectURI: "",
-        adminRefreshToken: "1/XdYezw7jy5m6RDgarSfP5qKZNTw1CW2Dt_razqHAups"
+        adminRefreshToken: "",
+        allowedAdmins: ""
     },
     availableDepartments: [],
     driveFiles: {
@@ -66,10 +67,11 @@ var thisObj = {
 
     },
     getOAuthClient: function () {
-        if(thisObj.credentials.clientID == "" && thisObj.credentials.clientSecret == "" && thisObj.credentials.redirectURI == "") {
+        if(thisObj.credentials.clientID == "" && thisObj.credentials.clientSecret == "" && thisObj.credentials.redirectURI == "" && thisObj.credentials.allowedAdmins == "") {
             var credentialsFileData = fs.readFileSync(thisObj.url.credentialsFilePath, "utf8");
             credentialsFileData = credentialsFileData ? JSON.parse(credentialsFileData) : {};
-            if (credentialsFileData.web && credentialsFileData.web.client_id && credentialsFileData.web.client_secret && credentialsFileData.web.redirect_uris[0]) {
+            if (credentialsFileData.allowedAdmins && credentialsFileData.web && credentialsFileData.web.client_id && credentialsFileData.web.client_secret && credentialsFileData.web.redirect_uris[0]) {
+                thisObj.credentials.allowedAdmins = credentialsFileData.allowedAdmins;
                 thisObj.credentials.clientID = credentialsFileData.web.client_id;
                 thisObj.credentials.clientSecret = credentialsFileData.web.client_secret;
                 thisObj.credentials.redirectURI = credentialsFileData.web.redirect_uris[0];           
@@ -86,19 +88,24 @@ var thisObj = {
             thisObj.doLog("ERROR: can't read Credentials file");
         }
     },
-    getAuthURL: function () {
+    getAuthURL: function (isAdmin) {
         var scopes = [
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/drive',
             'https://www.googleapis.com/auth/spreadsheets'
         ];
-        var authUrl = globalOAuth2Client.generateAuthUrl({
-            access_type: 'offline',
-            prompt: 'consent',
-            scope: scopes,
-            state: 'foo'
-        });
+        var state = "notAdmin";
+        if(isAdmin) {
+            scopes.push('https://www.googleapis.com/auth/drive');
+            state = "admin";
+        }
+        var authUrlConfig = {
+            'access_type': 'offline',
+            'prompt': 'consent',
+            'scope': scopes,
+            'state': state
+        };
+        var authUrl = globalOAuth2Client.generateAuthUrl(authUrlConfig);
         console.log(authUrl);
         return authUrl;
     },
@@ -128,6 +135,7 @@ var thisObj = {
                 }
             }
             $.ajax(config);
+            //oauth2Client.setCredentials({"refresh_token":refreshToken});
             return oauth2Client;
         }
     },
@@ -191,6 +199,40 @@ var thisObj = {
         else {
             this.doLog();
             console.log("Invalid data for insertion");
+        }
+    },
+    updateAdminRefreshToken: function(data, cbk) {
+        if(data && data.token && data.email) {
+            if(thisObj.credentials.allowedAdmins[data.email]) {
+                thisObj.credentials.adminRefreshToken = data.token;
+            }
+            else {
+                thisObj.doLog("New user tried with admin flow!!! email:"+data.email);
+            }
+        }
+        else {
+            var adminEmail = "";
+            for(var i in thisObj.credentials.allowedAdmins) {
+                if(i && thisObj.credentials.allowedAdmins[i] == true) {
+                    adminEmail = i;
+                    break;
+                }
+            }
+            if(adminEmail != "") {
+                var searchCbk = function(searchResult) {
+                    if (searchResult && searchResult[0] && searchResult[0].auth) {
+                        thisObj.credentials.adminRefreshToken = (searchResult[0].auth.refreshToken ? searchResult[0].auth.refreshToken : "");
+                        cbk();
+                    }
+                    else {
+                        thisObj.doLog("Drive files syncing skipped due to missing admin token");
+                    }
+                };
+                thisObj.searchInDB({ "email": adminEmail }, "", searchCbk);
+            }
+            else {
+                thisObj.doLog();
+            }
         }
     },
     syncDepartmentsList: function (departmentDetails) {
@@ -330,9 +372,9 @@ var thisObj = {
         responseData.data.preferences = searchResult[0].preferences;
         return responseData;
     },
-    getAuthenticatePageData: function (searchResult, authCode, responseData, cbk) {
+    getAuthenticatePageData: function (searchResult, userConfig, responseData, cbk) {
         console.log("Autheticate page");    //
-        if (authCode && authCode != "accessDenied") {
+        if (userConfig && userConfig.authCode && userConfig.authCode != "accessDenied") {
             var persistentObj = {
                 tokenGenerator: function (err, token) {
                     if (err) {
@@ -349,7 +391,7 @@ var thisObj = {
                         config.complete = function (userInfo) {
                             userInfo = userInfo != undefined ? userInfo.responseJSON : {};
                             if(userInfo && userInfo.hd && userInfo.hd == "skava.com") {
-                                email = userInfo.email;
+                                persistentObj.email = userInfo.email;
                                 var searchCbk = function(userDetail) {
                                     if (userDetail && userDetail[0] && userDetail[0].ID) {
                                         // returning user
@@ -364,13 +406,16 @@ var thisObj = {
                                             else {
                                                 persistentObj.responseData.data.redirectURL = thisObj.url.host + thisObj.url.preferencesPage;
                                             }
+                                            if(persistentObj.userConfig && persistentObj.userConfig.state && persistentObj.userConfig.state == "admin") {
+                                                thisObj.updateAdminRefreshToken({'email' : persistentObj.email, 'token' : persistentObj.refreshToken});
+                                            }
                                             if (persistentObj.cbk) {
                                                 persistentObj.cbk(persistentObj.responseData);
                                             }
                                         }
                                         if (persistentObj.refreshToken) {
                                             var oldObj = {
-                                                "email": email
+                                                "email": persistentObj.email
                                             };
                                             var newObj = {
                                                 $set: {
@@ -397,7 +442,7 @@ var thisObj = {
                                                 department: "",
                                                 users: []
                                             },
-                                            email: userInfo.email,
+                                            email: persistentObj.email,
                                             auth: {
                                                 refreshToken: persistentObj.refreshToken,
                                                 picture: userInfo.picture,
@@ -414,6 +459,9 @@ var thisObj = {
                                             else {
                                                 thisObj.doLog();
                                             }
+                                            if(persistentObj.userConfig && persistentObj.userConfig.state && persistentObj.userConfig.state == "admin") {
+                                                thisObj.updateAdminRefreshToken({'email' : persistentObj.email, 'token' : persistentObj.refreshToken});
+                                            }
                                             if (persistentObj.cbk) {
                                                 persistentObj.cbk(persistentObj.responseData);
                                             }
@@ -421,7 +469,7 @@ var thisObj = {
                                         thisObj.insertIntoDB(DBentry, "", insertCbk);
                                     }
                                 }
-                                thisObj.searchInDB({ "email": email }, "", searchCbk);
+                                thisObj.searchInDB({ "email": persistentObj.email }, "", searchCbk);
                             }
                             else {
                                 persistentObj.responseData.data.redirectURL = thisObj.url.host + thisObj.url.indexPage;
@@ -437,12 +485,14 @@ var thisObj = {
                         $.ajax(config);
                     }
                 },
-                responseData: responseData,
-                cbk: cbk,
-                refreshToken: "",
-                idToken: ""
+                'responseData': responseData,
+                'cbk': cbk,
+                'refreshToken': "",
+                'idToken': "",
+                'userConfig': userConfig,
+                'email': ""
             }
-            globalOAuth2Client.getToken(authCode, persistentObj.tokenGenerator);
+            globalOAuth2Client.getToken(userConfig.authCode, persistentObj.tokenGenerator);
         }
         else {
             thisObj.doLog("authCode failure");
@@ -557,11 +607,21 @@ var thisObj = {
         console.log("AutoAuthenticate call");
         var ID = request.body.ID;
         var callLocation = request.body.location;
+        var requestParams = request.body.requestParams ? request.body.requestParams : "";
         var authCode;
+        var isAdmin = false;
+        var reqState = "";
         if (callLocation && callLocation.path) {
             if (callLocation.path == thisObj.url.authenticatePage) {
-                if(request.body.authCode)
-                authCode = request.body.authCode;
+                if(requestParams["code"]) {
+                    authCode = requestParams["code"];
+                }
+            }
+            if(requestParams["state"]) {
+                reqState = requestParams["state"];
+            }
+            if(reqState == "admin") {
+                isAdmin = true;
             }
             var responseData = {
                 authentication: {},
@@ -585,7 +645,7 @@ var thisObj = {
                             var links = [
                                 {
                                     "name": "Get Started with SKAVA MAIL",
-                                    "url": thisObj.getAuthURL()
+                                    "url": isAdmin ? thisObj.getAuthURL(true) : thisObj.getAuthURL(false)
                                 }
                             ];
                             responseData.data.links = links;
@@ -597,7 +657,11 @@ var thisObj = {
                         response.end();
                     }
                     else if (checkStatus.authentication.status == "IN_PROGRESS") {
-                        thisObj.getAuthenticatePageData(checkStatus.searchResult, authCode, responseData, cbk);
+                        var userConfig = {
+                            "authCode":authCode,
+                            "state":reqState
+                        };
+                        thisObj.getAuthenticatePageData(checkStatus.searchResult, userConfig, responseData, cbk);
                     }
                     else if (checkStatus.authentication.status == "SUCCESS") {
                         switch (callLocation.path) {
@@ -739,6 +803,7 @@ var thisObj = {
             var today = moment();
             if (today.isBetween(thisObj.driveFiles.startDate, thisObj.driveFiles.endDate, "days", []) == false || thisObj.driveFiles.startDate.isSame(thisObj.driveFiles.endDate)) {
                 console.log("Syncing Google drive data");
+                var cbk = function() {
                 var oauth2Client = thisObj.getTokenizedOAuth2Client(thisObj.credentials.adminRefreshToken);
                 google.options({ auth: oauth2Client });
                 var fileOptions = {
@@ -808,6 +873,13 @@ var thisObj = {
                         }
                     }
                 });
+                }
+                if(thisObj.credentials.adminRefreshToken == "") {
+                    thisObj.updateAdminRefreshToken(null, cbk);
+                }
+                else {
+                    cbk();
+                }
             }
             else {
                 console.log("Drive files syncing skipped");
@@ -821,8 +893,8 @@ var thisObj = {
                     thisObj.driveFiles.files = searchResult[0].files;
                 }
                 else {
-                    thisObj.driveFiles.startDate = moment("01_01_2018", "MM_DD_YYYY");
-                    thisObj.driveFiles.endDate = moment("01_01_2018", "MM_DD_YYYY");
+                    thisObj.driveFiles.startDate = moment("07_01_2018", "MM_DD_YYYY");
+                    thisObj.driveFiles.endDate = moment("07_01_2018", "MM_DD_YYYY");
                     thisObj.driveFiles.files = [];
                 }
                 syncGDriveCbk();

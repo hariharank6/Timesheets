@@ -517,11 +517,11 @@ var thisObj = {
 		config.url = thisObj.url.host + thisObj.url.autoAuthenticateCall;
 		config.type = "POST";
 		config.async = false;
-		var authCode = params.code ? params.code : "accessDenied";
+		//var authCode = params.code ? params.code : "accessDenied";
 		config.data = {
 			"ID" : ID,
 			"location" : locationData,
-			"authCode" : authCode
+			"requestParams" : params
 		};
 		config.complete = function(response) {
 			response = response.responseJSON;
