@@ -80,27 +80,43 @@ Handlebars.template.analysis = Handlebars.template({"1":function(container,depth
 },"3":function(container,depth0,helpers,partials,data) {
     var stack1, helper;
 
-  return "                <div class=\"mdl-grid demo-content\">\n                    <div class=\"demo-charts demo-card-wide mdl-color--white mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-grid\">\n                        <div class=\"mdl-card__actions\">\n                            <h2 class=\"mdl-card__title-text\">"
+  return "                <div class=\"mdl-grid demo-content perDayDataContainer\">\n                    <div class=\"demo-charts demo-card-wide mdl-color--white mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-grid\">\n                        <div class=\"mdl-card__actions\">\n                            <h2 class=\"mdl-card__title-text\">"
     + container.escapeExpression(((helper = (helper = helpers.key || (data && data.key)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"key","hash":{},"data":data}) : helper)))
-    + "</h2>                          \n"
-    + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},depth0,{"name":"if","hash":{},"fn":container.program(4, data, 0),"inverse":container.program(7, data, 0),"data":data})) != null ? stack1 : "")
+    + "</h2>    \n                            <div class=\"mdl-card__supporting-text everyoneFilled hidden\">Everyone filled Time Sheet on "
+    + container.escapeExpression(((helper = (helper = helpers.key || (data && data.key)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"key","hash":{},"data":data}) : helper)))
+    + "</div>                      \n"
+    + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.users : depth0),{"name":"if","hash":{},"fn":container.program(4, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "                        </div>\n                    </div>\n                </div>\n";
 },"4":function(container,depth0,helpers,partials,data) {
-    var stack1;
+    var stack1, helper;
 
-  return "                                <ul class=\"demo-list-icon mdl-list\">\n"
-    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},depth0,{"name":"each","hash":{},"fn":container.program(5, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+  return "                                <ul class=\"demo-list-icon mdl-list\" sheetId=\""
+    + container.escapeExpression(((helper = (helper = helpers.sheetId || (depth0 != null ? depth0.sheetId : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"sheetId","hash":{},"data":data}) : helper)))
+    + "\" date="
+    + container.escapeExpression(((helper = (helper = helpers.key || (data && data.key)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"key","hash":{},"data":data}) : helper)))
+    + ">\n"
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.users : depth0),{"name":"each","hash":{},"fn":container.program(5, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "                                </ul>\n";
 },"5":function(container,depth0,helpers,partials,data) {
-    return "                                        <li class=\"mdl-list__item\">\n                                            <span class=\"mdl-list__item-primary-content\">\n                                                <i class=\"material-icons mdl-list__item-icon\">person</i>\n                                                "
-    + container.escapeExpression(container.lambda(depth0, depth0))
-    + "\n                                            </span>\n                                        </li>   \n";
-},"7":function(container,depth0,helpers,partials,data) {
+    var stack1;
+
+  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},depth0,{"name":"each","hash":{},"fn":container.program(6, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
+},"6":function(container,depth0,helpers,partials,data) {
     var helper;
 
-  return "                                <div class=\"mdl-card__supporting-text\">Everyone filled Time Sheet on "
+  return "                                        <li class=\"mdl-list__item\" status=\""
+    + container.escapeExpression(container.lambda((depth0 != null ? depth0.status : depth0), depth0))
+    + "\" tabName=\""
+    + container.escapeExpression(container.lambda((depth0 != null ? depth0.tabName : depth0), depth0))
+    + "\" dimesion=\""
+    + container.escapeExpression(container.lambda((depth0 != null ? depth0.dimension : depth0), depth0))
+    + "\">\n                                            <span class=\"mdl-list__item-primary-content\">\n                                                <i class=\"material-icons mdl-list__item-icon\" status=\""
+    + container.escapeExpression(container.lambda((depth0 != null ? depth0.status : depth0), depth0))
+    + "\">"
+    + container.escapeExpression((helpers.statusIcon || (depth0 && depth0.statusIcon) || helpers.helperMissing).call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.status : depth0),{"name":"statusIcon","hash":{},"data":data}))
+    + "</i>\n                                                "
     + container.escapeExpression(((helper = (helper = helpers.key || (data && data.key)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"key","hash":{},"data":data}) : helper)))
-    + "</div>\n";
+    + "\n                                            </span>\n                                        </li>   \n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 
@@ -113,6 +129,17 @@ Handlebars.registerHelper('substring', function( string, start, end ) {
     var theString = string.substring( start ,end );
     return new Handlebars.SafeString(theString);
 });
+Handlebars.registerHelper('statusIcon',function(string) {
+	if(string == "filled") {
+		return "check_circle_outline";
+	}
+	else if (string == "partial") {
+		return "warning";
+	}
+	else {
+		return "cancel";
+	}
+});
 var thisObj = {
 	currentPage : "",
 	url : {
@@ -122,7 +149,7 @@ var thisObj = {
 		preferencesPage : "/preferences.html",
 		analysisPage : "/analysis.html",
         autoAuthenticateCall : "/autoAuthenticate",
-        updatePreferencesCall : "/updatePreference",
+		updatePreferencesCall : "/updatePreference",
 		refreshDepartmentsCall : "/refreshDepartments",
 	},
 	templateContent : "",
@@ -132,6 +159,7 @@ var thisObj = {
 		//logging implementation
 	},
 	doNavigate : function(url,message) {
+		thisObj.isUnderRedirection = true;
 		thisObj.setClientLog(message);
 		location.href = url;
 	},
@@ -159,7 +187,7 @@ var thisObj = {
 				break;
 			}
 			default : {
-				thisObj.doNavigate(thisObj.url.indexPage,{});
+				thisObj.doNavigate(thisObj.url.host + thisObj.url.indexPage,{});
 				$("body").addClass("indexPage");
 				thisObj.currentPage = "index";
 				break;
@@ -200,7 +228,7 @@ var thisObj = {
 				path: "/"
 			};
 			$.cookie(cookieName,cookieData,options);
-			localStorage.removeItem("ID");
+			localStorage.setItem(cookieName, cookieData);
 		}
 		else {
 			thisObj.setClientLog();
@@ -208,13 +236,14 @@ var thisObj = {
 	},
 	getCookie : function(cookieName) {
 		if(cookieName) {
-			var cookieData =  $.cookie(cookieName);
-			if(cookieData) {
-				return cookieData;
+			var cookieData = "";
+			if($.cookie(cookieName)) {
+				cookieData = $.cookie(cookieName);
 			}
 			else {
-				return "";
+				cookieData = localStorage.getItem(cookieName);
 			}
+			return cookieData;
 		}
 		else {
 			return undefined;
@@ -385,7 +414,17 @@ var thisObj = {
 			else {
 				
 			}
-		});	
+		});
+		$("body").on("click",".toggleCompliant", function() {
+			if($("body").hasClass("compliantsHidden")) {
+				$("body").removeClass("compliantsHidden");
+				$(this).text("Hide Compliants");
+			}
+			else {
+				$("body").addClass("compliantsHidden");
+				$(this).text("Show Compliants");
+			}			
+		});
 	},
 	preferencesCustomEvents : function (response) {
 		if(response.data && response.data.preferences) {
@@ -552,6 +591,24 @@ var thisObj = {
 						}
 						case "analysis" : {
 							thisObj.renderHandlebar("analysis",response);
+							if($("body").hasClass("analysisPage")) {
+								$(".perDayDataContainer").each(function(){
+									var isCompliant = true;
+									$("ul li", this).each(function() {
+										var status = $(this).attr("status");
+										if(status == "empty" || status == "partial") {
+											isCompliant = false;
+											return;
+										}
+									});
+									if(isCompliant) {
+										$(this).addClass("compliant");
+									}
+									else {
+										$(this).addClass("nonCompliant");
+									}
+								});
+							}
 							break;
 						}
 						default : {
@@ -590,7 +647,7 @@ var thisObj = {
 			response = response ? response.responseJSON : {};
 			if(response && response.message) {
 				thisObj.showToast(response.message);
-			}			
+			}
 			if(response.data && response.data.redirectURL) {
 				thisObj.doNavigate(response.data.redirectURL,{});
 			}
@@ -608,7 +665,9 @@ $(document).ready(function(){
 	console.log("Document Loaded");
 	if(location.origin == thisObj.url.host) {
 		thisObj.setClassName();
-		thisObj.autoAuthenticate();
+		if(!thisObj.isUnderRedirection) {
+			thisObj.autoAuthenticate();
+		}		
 	}
 	else {
 		thisObj.doNavigate(thisObj.url.host + thisObj.url.indexPage,{});
