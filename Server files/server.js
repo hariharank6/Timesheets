@@ -28,6 +28,7 @@ var randomString = require("randomstring");
 var moment = require('moment');
 
 var thisObj = {
+    "$": $, // Temporary solution for scope
     url: {
         host: "http://192.168.233.80.xip.io:8080",
         indexPage: "/index.html",
@@ -53,10 +54,12 @@ var thisObj = {
         clientID: "",
         clientSecret: "",
         redirectURI: "",
-        adminRefreshToken: "1/XdYezw7jy5m6RDgarSfP5qKZNTw1CW2Dt_razqHAups"
+        adminRefreshToken: "",
+        allowedAdmins: ""
     },
     availableDepartments: [],
     driveFiles: {
+        isSyncInProgress: false,
         startDate: "",
         endDate: "",
         isUpdated: false,
@@ -66,10 +69,11 @@ var thisObj = {
 
     },
     getOAuthClient: function () {
-        if(thisObj.credentials.clientID == "" && thisObj.credentials.clientSecret == "" && thisObj.credentials.redirectURI == "") {
+        if(thisObj.credentials.clientID == "" && thisObj.credentials.clientSecret == "" && thisObj.credentials.redirectURI == "" && thisObj.credentials.allowedAdmins == "") {
             var credentialsFileData = fs.readFileSync(thisObj.url.credentialsFilePath, "utf8");
             credentialsFileData = credentialsFileData ? JSON.parse(credentialsFileData) : {};
-            if (credentialsFileData.web && credentialsFileData.web.client_id && credentialsFileData.web.client_secret && credentialsFileData.web.redirect_uris[0]) {
+            if (credentialsFileData.allowedAdmins && credentialsFileData.web && credentialsFileData.web.client_id && credentialsFileData.web.client_secret && credentialsFileData.web.redirect_uris[0]) {
+                thisObj.credentials.allowedAdmins = credentialsFileData.allowedAdmins;
                 thisObj.credentials.clientID = credentialsFileData.web.client_id;
                 thisObj.credentials.clientSecret = credentialsFileData.web.client_secret;
                 thisObj.credentials.redirectURI = credentialsFileData.web.redirect_uris[0];           
@@ -86,19 +90,24 @@ var thisObj = {
             thisObj.doLog("ERROR: can't read Credentials file");
         }
     },
-    getAuthURL: function () {
+    getAuthURL: function (isAdmin) {
         var scopes = [
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/drive',
             'https://www.googleapis.com/auth/spreadsheets'
         ];
-        var authUrl = globalOAuth2Client.generateAuthUrl({
-            access_type: 'offline',
-            prompt: 'consent',
-            scope: scopes,
-            state: 'foo'
-        });
+        var state = "notAdmin";
+        if(isAdmin) {
+            scopes.push('https://www.googleapis.com/auth/drive');
+            state = "admin";
+        }
+        var authUrlConfig = {
+            'access_type': 'offline',
+            'prompt': 'consent',
+            'scope': scopes,
+            'state': state
+        };
+        var authUrl = globalOAuth2Client.generateAuthUrl(authUrlConfig);
         console.log(authUrl);
         return authUrl;
     },
@@ -128,6 +137,7 @@ var thisObj = {
                 }
             }
             $.ajax(config);
+            //oauth2Client.setCredentials({"refresh_token":refreshToken});
             return oauth2Client;
         }
     },
@@ -191,6 +201,40 @@ var thisObj = {
         else {
             this.doLog();
             console.log("Invalid data for insertion");
+        }
+    },
+    updateAdminRefreshToken: function(data, cbk) {
+        if(data && data.token && data.email) {
+            if(thisObj.credentials.allowedAdmins[data.email]) {
+                thisObj.credentials.adminRefreshToken = data.token;
+            }
+            else {
+                thisObj.doLog("New user tried with admin flow!!! email:"+data.email);
+            }
+        }
+        else {
+            var adminEmail = "";
+            for(var i in thisObj.credentials.allowedAdmins) {
+                if(i && thisObj.credentials.allowedAdmins[i] == true) {
+                    adminEmail = i;
+                    break;
+                }
+            }
+            if(adminEmail != "") {
+                var searchCbk = function(searchResult) {
+                    if (searchResult && searchResult[0] && searchResult[0].auth) {
+                        thisObj.credentials.adminRefreshToken = (searchResult[0].auth.refreshToken ? searchResult[0].auth.refreshToken : "");
+                        cbk();
+                    }
+                    else {
+                        thisObj.doLog("Drive files syncing skipped due to missing admin token");
+                    }
+                };
+                thisObj.searchInDB({ "email": adminEmail }, "", searchCbk);
+            }
+            else {
+                thisObj.doLog();
+            }
         }
     },
     syncDepartmentsList: function (departmentDetails) {
@@ -330,9 +374,9 @@ var thisObj = {
         responseData.data.preferences = searchResult[0].preferences;
         return responseData;
     },
-    getAuthenticatePageData: function (searchResult, authCode, responseData, cbk) {
+    getAuthenticatePageData: function (searchResult, userConfig, responseData, cbk) {
         console.log("Autheticate page");    //
-        if (authCode && authCode != "accessDenied") {
+        if (userConfig && userConfig.authCode && userConfig.authCode != "accessDenied") {
             var persistentObj = {
                 tokenGenerator: function (err, token) {
                     if (err) {
@@ -349,7 +393,7 @@ var thisObj = {
                         config.complete = function (userInfo) {
                             userInfo = userInfo != undefined ? userInfo.responseJSON : {};
                             if(userInfo && userInfo.hd && userInfo.hd == "skava.com") {
-                                email = userInfo.email;
+                                persistentObj.email = userInfo.email;
                                 var searchCbk = function(userDetail) {
                                     if (userDetail && userDetail[0] && userDetail[0].ID) {
                                         // returning user
@@ -364,13 +408,16 @@ var thisObj = {
                                             else {
                                                 persistentObj.responseData.data.redirectURL = thisObj.url.host + thisObj.url.preferencesPage;
                                             }
+                                            if(persistentObj.userConfig && persistentObj.userConfig.state && persistentObj.userConfig.state == "admin") {
+                                                thisObj.updateAdminRefreshToken({'email' : persistentObj.email, 'token' : persistentObj.refreshToken});
+                                            }
                                             if (persistentObj.cbk) {
                                                 persistentObj.cbk(persistentObj.responseData);
                                             }
                                         }
                                         if (persistentObj.refreshToken) {
                                             var oldObj = {
-                                                "email": email
+                                                "email": persistentObj.email
                                             };
                                             var newObj = {
                                                 $set: {
@@ -397,7 +444,7 @@ var thisObj = {
                                                 department: "",
                                                 users: []
                                             },
-                                            email: userInfo.email,
+                                            email: persistentObj.email,
                                             auth: {
                                                 refreshToken: persistentObj.refreshToken,
                                                 picture: userInfo.picture,
@@ -414,6 +461,9 @@ var thisObj = {
                                             else {
                                                 thisObj.doLog();
                                             }
+                                            if(persistentObj.userConfig && persistentObj.userConfig.state && persistentObj.userConfig.state == "admin") {
+                                                thisObj.updateAdminRefreshToken({'email' : persistentObj.email, 'token' : persistentObj.refreshToken});
+                                            }
                                             if (persistentObj.cbk) {
                                                 persistentObj.cbk(persistentObj.responseData);
                                             }
@@ -421,7 +471,7 @@ var thisObj = {
                                         thisObj.insertIntoDB(DBentry, "", insertCbk);
                                     }
                                 }
-                                thisObj.searchInDB({ "email": email }, "", searchCbk);
+                                thisObj.searchInDB({ "email": persistentObj.email }, "", searchCbk);
                             }
                             else {
                                 persistentObj.responseData.data.redirectURL = thisObj.url.host + thisObj.url.indexPage;
@@ -437,12 +487,14 @@ var thisObj = {
                         $.ajax(config);
                     }
                 },
-                responseData: responseData,
-                cbk: cbk,
-                refreshToken: "",
-                idToken: ""
+                'responseData': responseData,
+                'cbk': cbk,
+                'refreshToken': "",
+                'idToken': "",
+                'userConfig': userConfig,
+                'email': ""
             }
-            globalOAuth2Client.getToken(authCode, persistentObj.tokenGenerator);
+            globalOAuth2Client.getToken(userConfig.authCode, persistentObj.tokenGenerator);
         }
         else {
             thisObj.doLog("authCode failure");
@@ -485,7 +537,7 @@ var thisObj = {
                     sheetOptions: {
                         spreadsheetId: '1MDZ6TvX0kCZnFAYpAoNKLnLJUWfE2ARFkXLkdVJpwd8',
                         majorDimension: 'COLUMNS',
-                        ranges: ['C6:C', 'DB6:DB'],
+                        ranges: [],
                         valueRenderOption: 'UNFORMATTED_VALUE'
                     },
                     dataGenerator: function (error, result) {
@@ -493,25 +545,15 @@ var thisObj = {
                             console.log(error);
                         }
                         else {
-                            var userNames = result.data.valueRanges[0].values[0];
-                            var userResponse = result.data.valueRanges[1].values[0];
-                            var sheetData = {
-                                spreadsheetId: result.data.spreadsheetId,
-                                userData: {}
-                            };
-                            for (var i = 0; i < userNames.length; i++) {
-                                if (userResponse[i] == undefined || userResponse[i] == "" || userResponse[i] < 0.3333333333333333) {
-                                    sheetData.userData[userNames[i]] = false;
-                                }
-                                else {
-                                    sheetData.userData[userNames[i]] = true;
-                                }
-                            }
+                            var currSheetId = result && result.data && result.data.spreadsheetId ? result.data.spreadsheetId : "";
                             var date = "";
                             for (keys in thisObj.driveFiles.files) {
                                 for (subkeys in thisObj.driveFiles.files[keys]) {
-                                    if (thisObj.driveFiles.files[keys][subkeys] == sheetData.spreadsheetId) {
-                                        persistentObj.responseData.data.results[keys] = [];
+                                    if (thisObj.driveFiles.files[keys][subkeys].sheetId == currSheetId) {
+                                        persistentObj.responseData.data.results[keys] = {
+                                            "sheetId" : currSheetId,
+                                            "users" : []
+                                        };
                                         date = keys;
                                         break;
                                     }
@@ -520,11 +562,40 @@ var thisObj = {
                                     break;
                                 }
                             }
-                            for (i = 0; i < persistentObj.searchResult[0].preferences.users.length; i++) {
-                                if (sheetData.userData[persistentObj.searchResult[0].preferences.users[i]] == false) {
-                                    persistentObj.responseData.data.results[date].push(persistentObj.searchResult[0].preferences.users[i]);
+                            if(currSheetId && date) {
+                                var userData = {};
+                                for(x = 0; x < result.data.valueRanges.length; x+= 2) {
+                                    var userNames = result.data.valueRanges[x].values[0];
+                                    var userResponse = result.data.valueRanges[x+1].values[0];
+
+                                    for (var i = 0; i < userNames.length; i++) {
+                                        if (userResponse[i] == undefined || userResponse[i] == "" || userResponse[i] == 0) {
+                                            userData[userNames[i]] = {
+                                                status: "empty",
+                                            }
+                                        }
+                                        else if (userResponse[i] < 0.3333333333333333) {
+                                            userData[userNames[i]] = {
+                                                status: "partial"
+                                            }
+                                        }
+                                        else {
+                                            userData[userNames[i]] = {
+                                                status: "filled"
+                                            }
+                                        }
+                                        userData[userNames[i]].tabName = result.data.valueRanges[x].range.split("!")[0];
+                                        userData[userNames[i]].dimension = "C" + (i+6) + ":DB" + (i+6);
+                                    }
+                                }
+                                for (var i = 0; i < persistentObj.searchResult[0].preferences.users.length; i++) {
+                                    persistentObj.responseData.data.results[date].users.push({[persistentObj.searchResult[0].preferences.users[i]] : userData[persistentObj.searchResult[0].preferences.users[i]]});
                                 }
                             }
+                            else {
+                                thisObj.doLog("Google sheet api data missing");
+                            }
+
                         }
                         if (Object.keys(persistentObj.responseData.data.results).length == persistentObj.totalDays) {
                             cbk(persistentObj.responseData);
@@ -536,7 +607,14 @@ var thisObj = {
                     totalDays: endDate.diff(startDate, 'days') + 1
                 };
                 for (startDate; startDate.isSameOrBefore(endDate); startDate = moment(moment(startDate).add(1, "days").format("MM_DD_YYYY"), "MM_DD_YYYY")) {
-                    persistentObj.sheetOptions.spreadsheetId = thisObj.driveFiles.files[startDate._i][searchResult[0].preferences.department];
+                    persistentObj.sheetOptions.spreadsheetId = thisObj.driveFiles.files[startDate._i][searchResult[0].preferences.department].sheetId;
+                    persistentObj.sheetOptions.ranges = [];
+                    for(tab in thisObj.driveFiles.files[startDate._i][searchResult[0].preferences.department].tabs) {
+                        if(thisObj.driveFiles.files[startDate._i][searchResult[0].preferences.department].tabs[tab]) {
+                            persistentObj.sheetOptions.ranges.push(tab+"!C6:C");
+                            persistentObj.sheetOptions.ranges.push(tab+"!DB6:DB");
+                        }
+                    }
                     sheets.spreadsheets.values.batchGet(persistentObj.sheetOptions, [], persistentObj.dataGenerator);
                 }
             }
@@ -557,11 +635,21 @@ var thisObj = {
         console.log("AutoAuthenticate call");
         var ID = request.body.ID;
         var callLocation = request.body.location;
+        var requestParams = request.body.requestParams ? request.body.requestParams : "";
         var authCode;
+        var isAdmin = false;
+        var reqState = "";
         if (callLocation && callLocation.path) {
             if (callLocation.path == thisObj.url.authenticatePage) {
-                if(request.body.authCode)
-                authCode = request.body.authCode;
+                if(requestParams["code"]) {
+                    authCode = requestParams["code"];
+                }
+            }
+            if(requestParams["state"]) {
+                reqState = requestParams["state"];
+            }
+            if(reqState == "admin") {
+                isAdmin = true;
             }
             var responseData = {
                 authentication: {},
@@ -585,7 +673,7 @@ var thisObj = {
                             var links = [
                                 {
                                     "name": "Get Started with SKAVA MAIL",
-                                    "url": thisObj.getAuthURL()
+                                    "url": isAdmin ? thisObj.getAuthURL(true) : thisObj.getAuthURL(false)
                                 }
                             ];
                             responseData.data.links = links;
@@ -597,7 +685,11 @@ var thisObj = {
                         response.end();
                     }
                     else if (checkStatus.authentication.status == "IN_PROGRESS") {
-                        thisObj.getAuthenticatePageData(checkStatus.searchResult, authCode, responseData, cbk);
+                        var userConfig = {
+                            "authCode":authCode,
+                            "state":reqState
+                        };
+                        thisObj.getAuthenticatePageData(checkStatus.searchResult, userConfig, responseData, cbk);
                     }
                     else if (checkStatus.authentication.status == "SUCCESS") {
                         switch (callLocation.path) {
@@ -732,105 +824,223 @@ var thisObj = {
         }
     },
     syncGDriveFileID: function () {
-        var searchObj = {
-            "ID": thisObj.db.driveFilesID
-        };
         var syncGDriveCbk = function() {
             var today = moment();
             if (today.isBetween(thisObj.driveFiles.startDate, thisObj.driveFiles.endDate, "days", []) == false || thisObj.driveFiles.startDate.isSame(thisObj.driveFiles.endDate)) {
                 console.log("Syncing Google drive data");
-                var oauth2Client = thisObj.getTokenizedOAuth2Client(thisObj.credentials.adminRefreshToken);
-                google.options({ auth: oauth2Client });
-                var fileOptions = {
-                    q: "name contains 'Timesheet' and mimeType = 'application/vnd.google-apps.spreadsheet'",
-                    pageSize: '1000',
-                    orderBy: 'createdTime desc'
-                };
-                drive.files.list(fileOptions, function (err, result) {
-                    if (err) {
-                        // Handle error
-                        console.error(err);
-                    }
-                    else {
-                        var files = {};
-                        var endDate = {};
-                        for (i = 0; i < result.data.files.length; i++) {
-                            var name = result.data.files[i].name;
-                            var nameArr = name.replace(/ /g, "").split("|");
-                            if (nameArr.length == 1) {
-                                nameArr[0] = nameArr[0].replace(".xlsx", "");
-                                nameArr = nameArr[0].split("-Timesheet_");
-                            }
-                            else {
-                                nameArr[0] = nameArr[0].replace("-Timesheet", "");
-                            }
-                            var thisDate = moment(nameArr[1], "MM_DD_YYYY");
-                            if (thisDate.isSameOrAfter(thisObj.driveFiles.startDate)) {
-                                if (typeof files[nameArr[1]] == "undefined") {
-                                    files[nameArr[1]] = {};
-                                }
-                                files[nameArr[1]][nameArr[0]] = result.data.files[i].id;
-                                if (thisObj.driveFiles.isUpdated == false) {
-                                    endDate = thisDate;
-                                }
-                                thisObj.driveFiles.isUpdated = true;
-                            }
-                        }
-                        console.log(thisObj.driveFiles);
-                        if (thisObj.driveFiles.isUpdated && endDate.isAfter(thisObj.driveFiles.endDate)) {
-                            thisObj.driveFiles.endDate = endDate;
-                            thisObj.driveFiles.files = files;
-                            var oldObj = {
-                                "ID": thisObj.db.driveFilesID
-                            }
-                            var newObj = {
-                                $set: {
-                                    "startDate": thisObj.driveFiles.startDate._i,
-                                    "endDate": thisObj.driveFiles.endDate._i,
-                                    "files": thisObj.driveFiles.files
-                                }
-                            }
-                            var updateCbk = function(updateObj) {
-                                thisObj.driveFiles.isUpdated = false;
-                                if (updateObj && updateObj.result && updateObj.result.n) {
-                                    console.log("Drive files synced");
-                                }
-                                else {
-                                    console.log("Error in syncing drive files");
-                                    thisObj.doLog();
-                                }
-                            }
-                            thisObj.updateInDB(oldObj, newObj, thisObj.db.driveFilesCollection, updateCbk);
+                thisObj.driveFiles.isSyncInProgress = true;
+                var cbk = function() {
+                    var oauth2Client = thisObj.getTokenizedOAuth2Client(thisObj.credentials.adminRefreshToken);
+                    google.options({ auth: oauth2Client });
+                    var fileOptions = {
+                        q: "name contains 'Timesheet' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+                        pageSize: '1000',
+                        orderBy: 'createdTime desc'
+                    };
+                    drive.files.list(fileOptions, function (err, result) {
+                        if (err) {
+                            // Handle error
+                            console.error(err);
+                            thisObj.doLog();
                         }
                         else {
-                            thisObj.driveFiles.isUpdated = false;
-                            console.log("Drive files syncing skipped due to lacking of updated data");
+                            var files = {};
+                            var tabsArray = [];
+                            var endDate = {};
+                            for (i = 0; i < result.data.files.length; i++) {
+                                var name = result.data.files[i].name;
+                                var nameArr = name.replace(/ /g, "").split("|");
+                                if (nameArr.length == 1) {
+                                    nameArr[0] = nameArr[0].replace(".xlsx", "");
+                                    nameArr = nameArr[0].split("-Timesheet_");
+                                }
+                                else {
+                                    nameArr[0] = nameArr[0].replace("-Timesheet", "");
+                                }
+                                var thisDate = moment(nameArr[1], "MM_DD_YYYY");
+                                if (thisDate.isSameOrAfter(thisObj.driveFiles.endDate)) {
+                                    if (typeof files[nameArr[1]] == "undefined") {
+                                        files[nameArr[1]] = {};
+                                    }
+                                    var fileData = {
+                                        sheetId : result.data.files[i].id,
+                                        tabs : {}
+                                    };
+                                    files[nameArr[1]][nameArr[0]] = fileData;
+                                    tabsArray.push({
+                                        sheetId : fileData.sheetId
+                                    });
+                                    if (thisObj.driveFiles.isUpdated == false) {
+                                        endDate = thisDate;
+                                    }
+                                    thisObj.driveFiles.isUpdated = true;
+                                }
+                            }
+                            console.log(thisObj.driveFiles);
+                            if (thisObj.driveFiles.isUpdated) {                                
+                                var metaDataCbk = function() {                                    
+                                    thisObj.driveFiles.endDate = endDate;                                    
+                                    thisObj.$.extend(thisObj.driveFiles.files,files);
+                                    var oldObj = {
+                                        "ID": thisObj.db.driveFilesID
+                                    }
+                                    var newObj = {
+                                        $set: {
+                                            "startDate": thisObj.driveFiles.startDate._i,
+                                            "endDate": thisObj.driveFiles.endDate._i,
+                                            "files": thisObj.driveFiles.files
+                                        }
+                                    }
+                                    var updateCbk = function(updateObj) {
+                                        thisObj.driveFiles.isUpdated = false;
+                                        thisObj.driveFiles.isSyncInProgress = false;
+                                        if (updateObj && updateObj.result && updateObj.result.n) {
+                                            console.log("Drive files synced");
+                                        }
+                                        else {
+                                            console.log("Error in syncing drive files");
+                                            thisObj.doLog();
+                                        }
+                                    }
+                                    thisObj.updateInDB(oldObj, newObj, thisObj.db.driveFilesCollection, updateCbk);
+                                };
+                                thisObj.getGDriveFileMetadata(files, tabsArray, metaDataCbk);
+                            }
+                            else {
+                                thisObj.driveFiles.isUpdated = false;
+                                console.log("Drive files syncing skipped due to lacking of updated data");
+                            }
                         }
-                    }
-                });
+                    });
+                }
+                if(thisObj.credentials.adminRefreshToken == "") {
+                    thisObj.updateAdminRefreshToken(null, cbk);
+                }
+                else {
+                    cbk();
+                }
             }
             else {
                 console.log("Drive files syncing skipped");
             }
-        }
-        if (thisObj.driveFiles.startDate == "" && thisObj.driveFiles.endDate == "") {
-            var searchCbk = function(searchResult) {
-                if (searchResult.length && searchResult[0].startDate && searchResult[0].endDate && searchResult[0].files) {
-                    thisObj.driveFiles.startDate = moment(searchResult[0].startDate, "MM_DD_YYYY");
-                    thisObj.driveFiles.endDate = moment(searchResult[0].endDate, "MM_DD_YYYY");
-                    thisObj.driveFiles.files = searchResult[0].files;
+        };
+        if(!thisObj.driveFiles.isSyncInProgress) {
+            if (thisObj.driveFiles.startDate == "" && thisObj.driveFiles.endDate == "") {
+                var searchObj = {
+                    "ID": thisObj.db.driveFilesID
+                };
+                var searchCbk = function(searchResult) {
+                    if (searchResult.length && searchResult[0].startDate && searchResult[0].endDate && searchResult[0].files) {
+                        thisObj.driveFiles.startDate = moment(searchResult[0].startDate, "MM_DD_YYYY");
+                        thisObj.driveFiles.endDate = moment(searchResult[0].endDate, "MM_DD_YYYY");
+                        thisObj.driveFiles.files = searchResult[0].files;
+                    }
+                    else {
+                        thisObj.driveFiles.startDate = moment("07_01_2018", "MM_DD_YYYY");
+                        thisObj.driveFiles.endDate = moment("07_01_2018", "MM_DD_YYYY");
+                        thisObj.driveFiles.files = [];
+                    }
+                    syncGDriveCbk();
                 }
-                else {
-                    thisObj.driveFiles.startDate = moment("01_01_2018", "MM_DD_YYYY");
-                    thisObj.driveFiles.endDate = moment("01_01_2018", "MM_DD_YYYY");
-                    thisObj.driveFiles.files = [];
-                }
+                thisObj.searchInDB(searchObj, thisObj.db.driveFilesCollection, searchCbk);
+            }
+            else {
                 syncGDriveCbk();
             }
-            thisObj.searchInDB(searchObj, thisObj.db.driveFilesCollection, searchCbk);
         }
         else {
-            syncGDriveCbk();
+            console.log("Google files syncing is already in progress");
+        }
+    },
+    getGDriveFileMetadata: function (files, tabsArray, cbk) {
+        var persistentObj = {
+            sheetOptions: {
+                spreadsheetId: '1MDZ6TvX0kCZnFAYpAoNKLnLJUWfE2ARFkXLkdVJpwd8'
+            },
+            dataGenerator: function(error, result) {
+                if(error) {
+                    console.error(error);
+                    thisObj.doLog(error);
+                }
+                else {
+                    if(result.data && result.data.spreadsheetId && result.data.properties && result.data.properties.title && result.data.sheets && result.data.sheets.length) {
+                        var tabs = {};
+                        var title = result.data.properties.title;
+                        var titleArr = title.replace(/ /g, "").split("|");
+                        if (titleArr.length == 1) {
+                            titleArr[0] = titleArr[0].replace(".xlsx", "");
+                            titleArr = titleArr[0].split("-Timesheet_");
+                        }
+                        else {
+                            titleArr[0] = titleArr[0].replace("-Timesheet", "");
+                        }
+                        var thisDate = moment(titleArr[1], "MM_DD_YYYY");
+                        if(persistentObj.files && persistentObj.files[thisDate._i] && persistentObj.files[thisDate._i][titleArr[0]]) {
+                            for(i = 0; i < result.data.sheets.length; i++) {
+                                var tabName = result.data.sheets[i] && result.data.sheets[i].properties && result.data.sheets[i].properties.title ? result.data.sheets[i].properties.title : "";
+                                if(tabName != "") {
+                                    formattedTabName = tabName.toLowerCase();
+                                    formattedTabName = formattedTabName.replace(/ /g,"");
+                                    if(formattedTabName == "projectcode" || formattedTabName == "tasks" || formattedTabName == "tasks-solnecom") {
+                                        tabs[tabName] = false;
+                                    }
+                                    else {
+                                        tabs[tabName] = true;
+                                    }                                    
+                                }
+                                else {
+                                    thisObj.doLog("tab name missing in meta API");
+                                }
+                            }
+                            persistentObj.files[thisDate._i][titleArr[0]].tabs = tabs;
+                        }
+                    }
+                    else {
+                        thisObj.doLog("Insufficient data");
+                    }
+                }
+                ++persistentObj.finishedSheets;
+                if (persistentObj.totalSheets == persistentObj.finishedSheets) {
+                    thisObj.driveFiles.files = persistentObj.files;
+                    persistentObj.cbk(persistentObj.files);
+                }
+            },
+            metaDataCallDispathcher : function() {                
+                for(persistentObj.currentTabsIndex; persistentObj.currentTabsIndex < persistentObj.tabsArray.length; persistentObj.currentTabsIndex++) {
+                    if(persistentObj.tabsArray[persistentObj.currentTabsIndex].sheetId) {
+                        persistentObj.sheetOptions.spreadsheetId = persistentObj.tabsArray[persistentObj.currentTabsIndex].sheetId;
+                        sheets.spreadsheets.get(persistentObj.sheetOptions, persistentObj.dataGenerator);
+                        if(persistentObj.currentTabsIndex && persistentObj.currentTabsIndex % 49 == 0 && persistentObj.currentTabsIndex != persistentObj.tabsArray.length - 1) {
+                            persistentObj.currentTabsIndex++;
+                            setTimeout(function() {
+                                console.log("Syncing " + persistentObj.currentTabsIndex + " / " + persistentObj.tabsArray.length);
+                                persistentObj.metaDataCallDispathcher();
+                            },100000);
+                            break;
+                        }
+                    }
+                    else {
+                        thisObj.doLog("sheetId missing");
+                    }
+                }
+            },
+            cbk: cbk,
+            files : files,
+            tabsArray : tabsArray,
+            currentTabsIndex : 0,
+            totalSheets : tabsArray.length,
+            finishedSheets : 0
+        }
+        var tokenCbk = function() {
+            var oauth2Client = thisObj.getTokenizedOAuth2Client(thisObj.credentials.adminRefreshToken);
+            google.options({ auth: oauth2Client });
+            persistentObj.metaDataCallDispathcher();    //To dispatch calls in the mentioned time periods
+        }
+        if(thisObj.credentials.adminRefreshToken == "") {
+            thisObj.updateAdminRefreshToken(null, tokenCbk);
+        }
+        else {
+            tokenCbk();
         }
     }
 };

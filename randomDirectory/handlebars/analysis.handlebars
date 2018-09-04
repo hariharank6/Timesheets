@@ -2,23 +2,24 @@
     {{#if data}}
         {{#if data.results}}
             {{#each data.results}}
-                <div class="mdl-grid demo-content">
+                <div class="mdl-grid demo-content perDayDataContainer">
                     <div class="demo-charts demo-card-wide mdl-color--white mdl-shadow--2dp mdl-cell mdl-cell--12-col mdl-grid">
                         <div class="mdl-card__actions">
-                            <h2 class="mdl-card__title-text">{{@key}}</h2>                          
-                            {{#if this}}
-                                <ul class="demo-list-icon mdl-list">
-                                    {{#each this}}
-                                        <li class="mdl-list__item">
+                            <h2 class="mdl-card__title-text">{{@key}}</h2>    
+                            <div class="mdl-card__supporting-text everyoneFilled hidden">Everyone filled Time Sheet on {{@key}}</div>                      
+                            {{#if users}}
+                                <ul class="demo-list-icon mdl-list" sheetId="{{sheetId}}" date={{@key}}>
+                                    {{#each users}}
+                                        {{#each this}}
+                                        <li class="mdl-list__item" status="{{this.status}}" tabName="{{this.tabName}}" dimesion="{{this.dimension}}">
                                             <span class="mdl-list__item-primary-content">
-                                                <i class="material-icons mdl-list__item-icon">person</i>
-                                                {{this}}
+                                                <i class="material-icons mdl-list__item-icon" status="{{this.status}}">{{statusIcon this.status}}</i>
+                                                {{@key}}
                                             </span>
                                         </li>   
+                                        {{/each}}
                                     {{/each}}                         
                                 </ul>
-                            {{else}}
-                                <div class="mdl-card__supporting-text">Everyone filled Time Sheet on {{@key}}</div>
                             {{/if}}                                
                         </div>
                     </div>

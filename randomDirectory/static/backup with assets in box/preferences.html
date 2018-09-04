@@ -31,8 +31,8 @@
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.cyan-light_blue.min.css">
-  <link rel="stylesheet" href="https://cdn.rawgit.com/CreativeIT/getmdl-select/master/getmdl-select.min.css">
+  <link rel="stylesheet" href="./css/material.cyan-light_blue.min.css">
+  <link rel="stylesheet" href="./css/getmdl-select.min.css">
   <link rel="stylesheet" href="./css/styles.css">
   <style>
     #view-source {
@@ -49,7 +49,15 @@
     <script src="./js/jquery.cookie.v1.4.js"></script>
     <script src="./js/handlebars.min.js"></script>
     <script src="./js/script.js"></script>
-   <script defer src="https://cdn.rawgit.com/CreativeIT/getmdl-select/master/getmdl-select.min.js"></script>
+    <!-- Include Required Prerequisites -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/bootstrap/3/css/bootstrap.css" />
+    
+    <!-- Include Date Range Picker -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css" />
+    
+   <script defer src="./js/getmdl-select.min.js"></script>
 </head>
 
 <body>
@@ -67,15 +75,12 @@
   <div class="demo-layout mdl-layout mdl-js-layout mdl-layout--fixed-drawer mdl-layout--fixed-header">
     <header class="demo-header mdl-layout__header mdl-color--grey-100 mdl-color-text--grey-600">
       <div class="mdl-layout__header-row">
-        <span class="mdl-layout-title">Results</span>
+        <span class="mdl-layout-title">Preferences</span>
         <div class="mdl-layout-spacer"></div>
-        <button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--primary" id="hdrbtn" data-upgraded=",MaterialButton,MaterialRipple">
-          CUSTOMISE
-        <span class="mdl-button__ripple-container"><span class="mdl-ripple"></span></span></button>
         <ul class="mdl-menu mdl-js-menu mdl-js-ripple-effect mdl-menu--bottom-right" for="hdrbtn">
-          <li class="mdl-menu__item toggleCompliant">Hide Compliants</li>
-          <!-- <li class="mdl-menu__item">Contact</li> -->
-          <!-- <li class="mdl-menu__item">Legal information</li> -->
+          <li class="mdl-menu__item">About</li>
+          <li class="mdl-menu__item">Contact</li>
+          <li class="mdl-menu__item">Legal information</li>
         </ul>
       </div>
     </header>
@@ -85,7 +90,7 @@
         <div class="demo-avatar-dropdown">
           <div class="mdl-layout-spacer"></div>
           <span class="mailContent">Welcome</span>
-          <div class="mdl-layout-spacer"></div>          
+          <div class="mdl-layout-spacer"></div>
         </div>
       </header>
       <nav class="demo-navigation mdl-navigation mdl-color--blue-grey-800">
@@ -101,10 +106,10 @@
       </nav>
     </div>
     <main class="mdl-layout__content mdl-color--grey-100">
-
+      
     </main>
   </div>
-  <script src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+  <script src="./js/material.min.js"></script>
 </body>
 
 </html>

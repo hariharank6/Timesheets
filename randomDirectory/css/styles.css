@@ -370,12 +370,12 @@ body {
   50% {
     stroke-dashoffset: 46.75;
     -webkit-transform: rotate(135deg);
-            transform: rotate(135deg);
+    transform: rotate(135deg);
   }
   100% {
     stroke-dashoffset: 187;
     -webkit-transform: rotate(450deg);
-            transform: rotate(450deg);
+    transform: rotate(450deg);
   }
 }
 @keyframes dash {
@@ -385,15 +385,22 @@ body {
   50% {
     stroke-dashoffset: 46.75;
     -webkit-transform: rotate(135deg);
-            transform: rotate(135deg);
+    transform: rotate(135deg);
   }
   100% {
     stroke-dashoffset: 187;
     -webkit-transform: rotate(450deg);
-            transform: rotate(450deg);
+    transform: rotate(450deg);
   }
 }
 body {
   background: #fafafa;
   position: relative;
+}
+body.compliantsHidden [status="filled"],
+body.compliantsHidden .compliant ul {
+  display: none;
+}
+body.compliantsHidden .compliant .everyoneFilled {
+  display: block !important;
 }
