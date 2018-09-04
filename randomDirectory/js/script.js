@@ -143,7 +143,7 @@ Handlebars.registerHelper('statusIcon',function(string) {
 var thisObj = {
 	currentPage : "",
 	url : {
-		host : "http://192.168.233.80.xip.io:8080",
+		host : "https://192.168.233.80.xip.io:8080",
 		indexPage : "/index.html",
 		authenticatePage : "/authenticate.html",
 		preferencesPage : "/preferences.html",

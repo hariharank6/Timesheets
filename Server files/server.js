@@ -1,4 +1,5 @@
 var express = require('express');
+var https = require('https');
 var app = express();
 
 var bodyParser = require('body-parser')
@@ -30,7 +31,7 @@ var moment = require('moment');
 var thisObj = {
     "$": $, // Temporary solution for scope
     url: {
-        host: "http://192.168.233.80.xip.io:8080",
+        host: "https://192.168.233.80.xip.io:8080",
         indexPage: "/index.html",
         authenticatePage: "/authenticate.html",
         preferencesPage: "/preferences.html",
@@ -39,6 +40,7 @@ var thisObj = {
         updatePreferencesCall: "/updatePreference",
         refreshDepartmentsCall: "/refreshDepartments",
         credentialsFilePath: "Server files/credentials.json",
+        certificatesFilePath: "Server files/certificates/",
         accessToken: "https://www.googleapis.com/oauth2/v4/token"
     },
     db: {
@@ -1033,7 +1035,14 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 
 app.all("/*", thisObj.requestHandler);
 
-var server = app.listen(8080, function () {
+var options = {
+    ca: fs.readFileSync(thisObj.url.certificatesFilePath + 'server.csr'),
+    cert: fs.readFileSync(thisObj.url.certificatesFilePath + 'server.cert'),
+    key: fs.readFileSync(thisObj.url.certificatesFilePath + 'server.key')
+  };
+var server = https.createServer(options, app);
+
+server.listen(8080, function () {
     var host = server.address().address
     var port = server.address().port
     console.log("Example app listening at http://%s:%s", host, port);
