@@ -114,30 +114,9 @@ var thisObj = {
     getTokenizedOAuth2Client: function (refreshToken) {
         if (refreshToken) {
             var oauth2Client = thisObj.getOAuthClient();
-            var config = {};
-            config.url = thisObj.url.accessToken;
-            config.type = "POST";
-            config.async = false;
-            config.contentType = 'application/x-www-form-urlencoded; charset=UTF-8';
-            config.data = {
-                "client_id": thisObj.credentials.clientID,
-                "client_secret": thisObj.credentials.clientSecret,
-                "refresh_token": refreshToken,
-                "grant_type": "refresh_token"
-            };
-            config.complete = function (data) {
-                data = data ? data.responseJSON : "";
-                if (data && data.access_token) {
-                    oauth2Client.setCredentials({
-                        access_token: data.access_token
-                    });                    
-                }
-                else {
-                    thisObj.doLog("Invalid Refresh Token");
-                }
-            }
-            $.ajax(config);
-            //oauth2Client.setCredentials({"refresh_token":refreshToken});
+            oauth2Client.setCredentials({
+                "refresh_token":refreshToken
+            });
             return oauth2Client;
         }
     },
