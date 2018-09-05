@@ -1034,10 +1034,8 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 
 app.all("/*", thisObj.requestHandler);
 
-var server = app.listen(8080, function () {
-    var host = server.address().address
-    var port = server.address().port
-    console.log("Example app listening at http://%s:%s", host, port);
+var server = app.listen(8080, function() {
+    console.log("Timesheets app listening at %s", thisObj.url.host);
     globalOAuth2Client = thisObj.getOAuthClient();
     thisObj.syncDepartmentsList();
     thisObj.syncGDriveFileID();

@@ -553,6 +553,55 @@ var thisObj = {
 		};
 		snackbarContainer.MaterialSnackbar.showSnackbar(data);
 	},
+	sortResults : function(response) {
+		var results = response && response.data && response.data.results ? response.data.results : "";
+		if(results != "") {
+			var dateArray = Object.keys(results);
+			dateArray.sort();
+			var sortedResults = {};
+			for(i =0; i < dateArray.length; i++){
+				sortedResults[dateArray[i]] = results[dateArray[i]];
+			}
+			response.data.results = sortedResults;			
+		}
+		else {
+			thisObj.setClientLog("Data missing in response");
+		}
+		return response;
+	},
+	doAnalysisFormat : function() {
+		if($("body").hasClass("analysisPage")) {
+			$(".perDayDataContainer").each(function(){
+				var isCompliant = true;
+				$("ul li", this).each(function() {
+					var status = $(this).attr("status");
+					if(status == "empty" || status == "partial") {
+						isCompliant = false;
+						return;
+					}
+				});
+				if(isCompliant) {
+					$(this).addClass("compliant");
+				}
+				else {
+					$(this).addClass("nonCompliant");
+				}
+				var dateText = $(".mdl-card__title-text",this).text();
+				var date = dateText ? moment(dateText, "MM_DD_YYYY") : "";
+				if(date != "") {
+					if(date.format("dddd") == "Saturday" || date.format("dddd") == "Sunday") {
+						$(this).addClass("weekEndDay");
+					}
+					else {
+						$(this).addClass("weekDay");
+					}
+				}
+				else {
+					thisObj.setClientLog("Date missing");
+				}
+			});
+		}
+	},
 	autoAuthenticate : function() {
 		var ID = thisObj.getCookie("ID");
 		var params={};
@@ -601,38 +650,9 @@ var thisObj = {
 							break;
 						}
 						case "analysis" : {
-							thisObj.renderHandlebar("analysis",response);
-							if($("body").hasClass("analysisPage")) {
-								$(".perDayDataContainer").each(function(){
-									var isCompliant = true;
-									$("ul li", this).each(function() {
-										var status = $(this).attr("status");
-										if(status == "empty" || status == "partial") {
-											isCompliant = false;
-											return;
-										}
-									});
-									if(isCompliant) {
-										$(this).addClass("compliant");
-									}
-									else {
-										$(this).addClass("nonCompliant");
-									}
-									var dateText = $(".mdl-card__title-text",this).text();
-									var date = dateText ? moment(dateText, "MM_DD_YYYY") : "";
-									if(date != "") {
-										if(date.format("dddd") == "Saturday" || date.format("dddd") == "Sunday") {
-											$(this).addClass("weekEndDay");
-										}
-										else {
-											$(this).addClass("weekDay");
-										}
-									}
-									else {
-
-									}
-								});
-							}
+							var sortedResponse = thisObj.sortResults(response);
+							thisObj.renderHandlebar("analysis",sortedResponse);
+							thisObj.doAnalysisFormat();
 							break;
 						}
 						default : {
