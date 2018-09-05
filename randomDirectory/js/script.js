@@ -425,6 +425,16 @@ var thisObj = {
 				$(this).text("Show Compliants");
 			}			
 		});
+		$("body").on("click",".toggleWeekend", function() {
+			if($("body").hasClass("weekEndsHidden")) {
+				$("body").removeClass("weekEndsHidden");
+				$(this).text("Hide Weekends");
+			}
+			else {
+				$("body").addClass("weekEndsHidden");
+				$(this).text("Show Weekends");
+			}	
+		});
 	},
 	preferencesCustomEvents : function (response) {
 		if(response.data && response.data.preferences) {
@@ -565,6 +575,7 @@ var thisObj = {
 		config.complete = function(response) {
 			response = response.responseJSON;
 			console.log(response);
+			analysisResponse = response;
 			if(response && response.message) {
 				thisObj.showToast(response.message);
 			}
@@ -606,6 +617,19 @@ var thisObj = {
 									}
 									else {
 										$(this).addClass("nonCompliant");
+									}
+									var dateText = $(".mdl-card__title-text",this).text();
+									var date = dateText ? moment(dateText, "MM_DD_YYYY") : "";
+									if(date != "") {
+										if(date.format("dddd") == "Saturday" || date.format("dddd") == "Sunday") {
+											$(this).addClass("weekEndDay");
+										}
+										else {
+											$(this).addClass("weekDay");
+										}
+									}
+									else {
+
 									}
 								});
 							}

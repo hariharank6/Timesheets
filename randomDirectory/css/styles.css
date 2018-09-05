@@ -398,7 +398,8 @@ body {
   position: relative;
 }
 body.compliantsHidden [status="filled"],
-body.compliantsHidden .compliant ul {
+body.compliantsHidden .compliant ul,
+body.weekEndsHidden .weekEndDay {
   display: none;
 }
 body.compliantsHidden .compliant .everyoneFilled {

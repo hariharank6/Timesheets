@@ -548,6 +548,7 @@ var thisObj = {
                                     var userResponse = result.data.valueRanges[x+1].values[0];
 
                                     for (var i = 0; i < userNames.length; i++) {
+                                        userNames[i] = userNames[i].trim();
                                         if (userResponse[i] == undefined || userResponse[i] == "" || userResponse[i] == 0) {
                                             userData[userNames[i]] = {
                                                 status: "empty",
