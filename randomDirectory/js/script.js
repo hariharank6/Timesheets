@@ -681,7 +681,7 @@ var thisObj = {
 		var config = {};
 		config.url = thisObj.url.host + thisObj.url.updatePreferencesCall;
 		config.type = "POST";
-		config.async = false;
+		// config.async = false;
 		config.data = {
 			"ID" : ID,
 			"location" : locationData,
@@ -701,8 +701,8 @@ var thisObj = {
 			thisObj.showMenus(response);
 			thisObj.hideLoading();
 		}
-		thisObj.makeAJAX(config);
 		thisObj.showLoading();
+		thisObj.makeAJAX(config);		
 	}
 }
 $(document).ready(function(){
