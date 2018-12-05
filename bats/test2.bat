@@ -1,0 +1,1 @@
+START C:\Users\hariharan.k\AppData\Local\MongoDBCompassCommunity\MongoDBCompassCommunity.exe
