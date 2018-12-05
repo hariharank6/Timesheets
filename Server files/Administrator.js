@@ -6,7 +6,7 @@ var dataGenerator = require("./DataGenerator.js");
 
 data = {
     url: {
-        host: "http://192.168.233.80.xip.io:8080",
+        host: "https://192.168.233.73.xip.io:8080",
         indexPage: "/index.html",
         authenticatePage: "/authenticate.html",
         preferencesPage: "/preferences.html",
@@ -15,6 +15,7 @@ data = {
         updatePreferencesCall: "/updatePreference",
         refreshDepartmentsCall: "/refreshDepartments",
         credentialsFilePath: "Server files/credentials.json",
+        certificatesFilePath: "Server files/certificates/",
         accessToken: "https://www.googleapis.com/oauth2/v4/token"
     },
     db: {
